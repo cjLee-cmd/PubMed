@@ -83,6 +83,89 @@ main {
   overflow-y: auto;
 }
 
+/* 날짜 필터 스타일 */
+.date-filter-container {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.date-filter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.date-filter-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #4b0082;
+}
+
+.date-filter-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  font-weight: 500;
+  color: #495057;
+}
+
+.date-filter-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.date-filter-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  opacity: 0.5;
+  pointer-events: none;
+  transition: all 0.3s ease;
+}
+
+.date-filter-inputs.enabled {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.date-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.date-input-group label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6c757d;
+}
+
+.date-input-group input[type="date"] {
+  padding: 0.5rem;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  background-color: white;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.date-input-group input[type="date"]:focus {
+  outline: none;
+  border-color: #80bdff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.date-input-group input[type="date"]:disabled {
+  background-color: #e9ecef;
+  opacity: 1;
+}
+
 .keyword-group {
   display: flex;
   gap: 0.5rem;
@@ -292,5 +375,9 @@ button.search-btn {
   
   .keyword-group button {
     min-width: 60px;
+  }
+  
+  .date-filter-inputs {
+    grid-template-columns: 1fr;
   }
 }

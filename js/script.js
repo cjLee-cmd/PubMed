@@ -155,7 +155,42 @@ function updateSummary() {
     if ((i + 1) % 5 === 0) formattedText += '\n';
   }
 
+  // 날짜 필터 추가
+  const dateFilterText = getDateFilterText();
+  if (dateFilterText) {
+    if (formattedText) {
+      formattedText += ' AND ' + dateFilterText;
+    } else {
+      formattedText = dateFilterText;
+    }
+  }
+
   summary.textContent = formattedText || '검색 조건이 없습니다.';
+}
+
+// 날짜 필터 텍스트 생성
+function getDateFilterText() {
+  const enableDateFilter = document.getElementById('enable-date-filter').checked;
+  if (!enableDateFilter) return '';
+
+  const startDate = document.getElementById('start-date').value;
+  const endDate = document.getElementById('end-date').value;
+
+  if (!startDate && !endDate) return '';
+
+  let dateText = '';
+  if (startDate && endDate) {
+    // 시작일과 종료일 모두 있는 경우
+    dateText = `("${startDate}"[Date - Publication] : "${endDate}"[Date - Publication])`;
+  } else if (startDate) {
+    // 시작일만 있는 경우
+    dateText = `"${startDate}"[Date - Publication] : 3000[Date - Publication]`;
+  } else if (endDate) {
+    // 종료일만 있는 경우
+    dateText = `1800[Date - Publication] : "${endDate}"[Date - Publication]`;
+  }
+
+  return dateText;
 }
 
 function createKeywordGroup() {
@@ -266,7 +301,10 @@ async function search() {
   const resultsEl = document.getElementById('results');
   resultsEl.innerHTML = `<p>🔍 검색 중입니다... "${rawQuery}"</p>`;
 
-  const searchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(rawQuery)}&retmode=json&retmax=10&api_key=${apiKey}`;
+  // 날짜 필터가 포함된 검색 쿼리 생성
+  let searchQuery = buildSearchQuery();
+  
+  const searchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(searchQuery)}&retmode=json&retmax=10&api_key=${apiKey}`;
 
   try {
     const searchRes = await fetch(searchUrl);
@@ -310,7 +348,91 @@ async function search() {
   }
 }
 
+// 키워드와 날짜 필터를 조합한 검색 쿼리 생성
+function buildSearchQuery() {
+  const groups = document.querySelectorAll('.keyword-group');
+  const keywordParts = [];
+
+  // 키워드 부분 생성
+  groups.forEach((group, index) => {
+    const input = group.querySelector('input').value.trim();
+    const activeBtn = group.querySelector('button.active');
+    if (!input) return;
+    const formatted = `"${input}"`;
+
+    if (keywordParts.length > 0) {
+      const prevGroup = groups[index - 1];
+      const prevBtn = prevGroup ? prevGroup.querySelector('button.active') : null;
+      if (prevBtn) keywordParts.push(prevBtn.textContent.toUpperCase());
+    }
+    keywordParts.push(formatted);
+  });
+
+  let query = keywordParts.join(' ');
+
+  // 날짜 필터 추가
+  const enableDateFilter = document.getElementById('enable-date-filter').checked;
+  if (enableDateFilter) {
+    const startDate = document.getElementById('start-date').value;
+    const endDate = document.getElementById('end-date').value;
+
+    if (startDate || endDate) {
+      let dateQuery = '';
+      
+      if (startDate && endDate) {
+        // 범위 검색: YYYY/MM/DD 형식으로 변환
+        const startFormatted = startDate.replace(/-/g, '/');
+        const endFormatted = endDate.replace(/-/g, '/');
+        dateQuery = `("${startFormatted}"[Date - Publication] : "${endFormatted}"[Date - Publication])`;
+      } else if (startDate) {
+        // 시작일 이후
+        const startFormatted = startDate.replace(/-/g, '/');
+        dateQuery = `"${startFormatted}"[Date - Publication] : 3000[Date - Publication]`;
+      } else if (endDate) {
+        // 종료일 이전
+        const endFormatted = endDate.replace(/-/g, '/');
+        dateQuery = `1800[Date - Publication] : "${endFormatted}"[Date - Publication]`;
+      }
+
+      if (dateQuery) {
+        if (query) {
+          query += ' AND ' + dateQuery;
+        } else {
+          query = dateQuery;
+        }
+      }
+    }
+  }
+
+  return query;
+}
+
 createKeywordGroup();
+
+// 날짜 필터 기능 초기화
+function initializeDateFilter() {
+  const enableDateFilterCheckbox = document.getElementById('enable-date-filter');
+  const dateFilterInputs = document.getElementById('date-filter-inputs');
+  const startDateInput = document.getElementById('start-date');
+  const endDateInput = document.getElementById('end-date');
+
+  // 체크박스 변경 이벤트
+  enableDateFilterCheckbox.addEventListener('change', function() {
+    if (this.checked) {
+      dateFilterInputs.classList.add('enabled');
+    } else {
+      dateFilterInputs.classList.remove('enabled');
+      // 체크박스 해제 시 날짜 입력값 초기화
+      startDateInput.value = '';
+      endDateInput.value = '';
+    }
+    updateSummary(); // 요약 업데이트
+  });
+
+  // 날짜 입력 변경 이벤트
+  startDateInput.addEventListener('change', updateSummary);
+  endDateInput.addEventListener('change', updateSummary);
+}
 
 // Summary 박스 복사/붙여넣기 기능 초기화
 function initializeSummaryFeatures() {
@@ -431,24 +553,68 @@ function parseSummaryAndCreateGroups(text) {
   const keywordContainer = document.getElementById('keyword-container');
   keywordContainer.innerHTML = '';
 
-  // 텍스트를 파싱하여 키워드와 연산자 추출
+  // 날짜 필터 초기화
+  const enableDateFilter = document.getElementById('enable-date-filter');
+  const startDateInput = document.getElementById('start-date');
+  const endDateInput = document.getElementById('end-date');
+  const dateFilterInputs = document.getElementById('date-filter-inputs');
+  
+  enableDateFilter.checked = false;
+  dateFilterInputs.classList.remove('enabled');
+  startDateInput.value = '';
+  endDateInput.value = '';
+
+  // 텍스트를 파싱하여 키워드와 연산자, 날짜 필터 추출
   const cleanText = text.replace(/\n/g, ' ').trim();
-  const parts = cleanText.split(/\s+/);
   
-  let currentKeyword = '';
-  let currentOperator = '';
+  // 날짜 필터 패턴 감지 및 제거
+  const dateFilterPattern = /\("(\d{4}-\d{2}-\d{2})"\[Date - Publication\] : "(\d{4}-\d{2}-\d{2})"\[Date - Publication\]\)|"(\d{4}-\d{2}-\d{2})"\[Date - Publication\] : 3000\[Date - Publication\]|1800\[Date - Publication\] : "(\d{4}-\d{2}-\d{2})"\[Date - Publication\]/g;
   
-  for (let i = 0; i < parts.length; i++) {
-    const part = parts[i];
+  let dateMatch;
+  let keywordText = cleanText;
+  
+  while ((dateMatch = dateFilterPattern.exec(cleanText)) !== null) {
+    if (dateMatch[1] && dateMatch[2]) {
+      // 범위 필터
+      startDateInput.value = dateMatch[1];
+      endDateInput.value = dateMatch[2];
+      enableDateFilter.checked = true;
+      dateFilterInputs.classList.add('enabled');
+    } else if (dateMatch[3]) {
+      // 시작일만
+      startDateInput.value = dateMatch[3];
+      enableDateFilter.checked = true;
+      dateFilterInputs.classList.add('enabled');
+    } else if (dateMatch[4]) {
+      // 종료일만
+      endDateInput.value = dateMatch[4];
+      enableDateFilter.checked = true;
+      dateFilterInputs.classList.add('enabled');
+    }
     
-    if (part.startsWith('"') && part.endsWith('"')) {
-      // 따옴표로 둘러싸인 키워드
-      currentKeyword = part.slice(1, -1);
-      createKeywordGroupWithValue(currentKeyword, currentOperator);
-      currentOperator = '';
-    } else if (part.toUpperCase() === 'AND' || part.toUpperCase() === 'OR') {
-      // 연산자
-      currentOperator = part.toUpperCase();
+    // 날짜 필터 부분을 텍스트에서 제거
+    keywordText = keywordText.replace(dateMatch[0], '').replace(/ AND $/, '').replace(/^ AND /, '').trim();
+  }
+
+  // 키워드 부분 파싱
+  if (keywordText) {
+    const parts = keywordText.split(/\s+/);
+    
+    let currentKeyword = '';
+    let currentOperator = '';
+    
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      
+      if (part.startsWith('"') && part.endsWith('"')) {
+        // 따옴표로 둘러싸인 키워드
+        currentKeyword = part.slice(1, -1);
+        createKeywordGroupWithValue(currentKeyword, currentOperator);
+        currentOperator = '';
+      } else if (part.toUpperCase() === 'AND' || part.toUpperCase() === 'OR') {
+        // 연산자
+        currentOperator = part.toUpperCase();
+      }
     }
   }
   
@@ -658,3 +824,6 @@ function updateSaveButtons(hasResults) {
 
 // 저장 기능 초기화
 initializeSaveFeatures();
+
+// 날짜 필터 기능 초기화
+initializeDateFilter();

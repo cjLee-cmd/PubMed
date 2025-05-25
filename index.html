@@ -17,6 +17,25 @@
       <div class="search-panel">
         <h2>검색 조건 설정</h2>
         <div id="keyword-container"></div>
+        <div class="date-filter-container">
+          <div class="date-filter-header">
+            <h3>발행 기간 설정</h3>
+            <label class="date-filter-toggle">
+              <input type="checkbox" id="enable-date-filter" />
+              <span>기간 필터 사용</span>
+            </label>
+          </div>
+          <div class="date-filter-inputs" id="date-filter-inputs">
+            <div class="date-input-group">
+              <label for="start-date">시작일:</label>
+              <input type="date" id="start-date" />
+            </div>
+            <div class="date-input-group">
+              <label for="end-date">종료일:</label>
+              <input type="date" id="end-date" />
+            </div>
+          </div>
+        </div>
         <div class="summary-container">
           <div class="summary-header">
             <h3>검색 조건 미리보기</h3>
