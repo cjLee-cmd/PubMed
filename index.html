@@ -30,13 +30,20 @@
         <button class="search-btn" onclick="search()">Search</button>
       </div>
       <div class="results-panel">
-        <h2>검색 결과</h2>
+        <div class="results-header">
+          <h2>검색 결과</h2>
+          <div class="results-controls">
+            <button class="save-json-btn" title="JSON으로 저장" disabled>📄 JSON</button>
+            <button class="save-excel-btn" title="Excel로 저장" disabled>📊 Excel</button>
+          </div>
+        </div>
         <div class="results" id="results">Results will appear here...</div>
       </div>
     </div>
   </main>
 
   <!-- config 먼저, script 나중 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="./js/config.js"></script>
   <script src="./js/script.js"></script>
 </body>

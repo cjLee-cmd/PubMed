@@ -275,6 +275,8 @@ async function search() {
     const ids = searchData.esearchresult?.idlist || [];
     if (ids.length === 0) {
       resultsEl.innerHTML = `<p>🔎 검색 결과가 없습니다.</p>`;
+      currentSearchResults = []; // 검색 결과 초기화
+      updateSaveButtons(false); // 저장 버튼 비활성화
       return;
     }
 
@@ -300,6 +302,8 @@ async function search() {
     });
 
     resultsEl.innerHTML = `<pre>${JSON.stringify(resultList, null, 2)}</pre>`;
+    currentSearchResults = resultList; // 검색 결과 저장
+    updateSaveButtons(true); // 저장 버튼 활성화
   } catch (error) {
     console.error(error);
     resultsEl.innerHTML = `<p style="color: red;">❌ 검색 중 오류가 발생했습니다.</p>`;
@@ -542,3 +546,115 @@ function createKeywordGroupWithValue(keyword, operator) {
 
 // Summary 기능 초기화
 initializeSummaryFeatures();
+
+// 저장 기능 관련 전역 변수
+let currentSearchResults = [];
+
+// 저장 기능 초기화
+function initializeSaveFeatures() {
+  const saveJsonBtn = document.querySelector('.save-json-btn');
+  const saveExcelBtn = document.querySelector('.save-excel-btn');
+
+  // JSON 저장 버튼 이벤트
+  saveJsonBtn.onclick = () => {
+    if (currentSearchResults.length > 0) {
+      saveAsJson(currentSearchResults);
+    }
+  };
+
+  // Excel 저장 버튼 이벤트
+  saveExcelBtn.onclick = () => {
+    if (currentSearchResults.length > 0) {
+      saveAsExcel(currentSearchResults);
+    }
+  };
+}
+
+// JSON 형태로 저장
+function saveAsJson(data) {
+  try {
+    const jsonString = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pubmed_search_results_${getFormattedDate()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showToast('JSON 파일이 다운로드되었습니다.');
+  } catch (error) {
+    console.error('JSON 저장 실패:', error);
+    showToast('JSON 저장에 실패했습니다.');
+  }
+}
+
+// Excel 형태로 저장
+function saveAsExcel(data) {
+  try {
+    // 데이터를 Excel에 적합한 형태로 변환
+    const excelData = data.map((item, index) => ({
+      '번호': index + 1,
+      'PMID': item.pmid,
+      '제목': item.title,
+      '저자': Array.isArray(item.authors) ? item.authors.join(', ') : item.authors || '',
+      '출처': item.source,
+      '발행일': item.pubdate,
+      '초록': item.abstract
+    }));
+
+    // 워크북 생성
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'PubMed 검색 결과');
+
+    // 컬럼 너비 조정
+    const colWidths = [
+      { wch: 5 },  // 번호
+      { wch: 10 }, // PMID
+      { wch: 50 }, // 제목
+      { wch: 30 }, // 저자
+      { wch: 30 }, // 출처
+      { wch: 12 }, // 발행일
+      { wch: 80 }  // 초록
+    ];
+    ws['!cols'] = colWidths;
+
+    // 파일 저장
+    XLSX.writeFile(wb, `pubmed_search_results_${getFormattedDate()}.xlsx`);
+    
+    showToast('Excel 파일이 다운로드되었습니다.');
+  } catch (error) {
+    console.error('Excel 저장 실패:', error);
+    showToast('Excel 저장에 실패했습니다.');
+  }
+}
+
+// 날짜 포맷팅 함수 (파일명용)
+function getFormattedDate() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hour = String(now.getHours()).padStart(2, '0');
+  const minute = String(now.getMinutes()).padStart(2, '0');
+  
+  return `${year}${month}${day}_${hour}${minute}`;
+}
+
+// 저장 버튼 활성화/비활성화
+function updateSaveButtons(hasResults) {
+  const saveJsonBtn = document.querySelector('.save-json-btn');
+  const saveExcelBtn = document.querySelector('.save-excel-btn');
+  
+  if (saveJsonBtn && saveExcelBtn) {
+    saveJsonBtn.disabled = !hasResults;
+    saveExcelBtn.disabled = !hasResults;
+  }
+}
+
+// 저장 기능 초기화
+initializeSaveFeatures();

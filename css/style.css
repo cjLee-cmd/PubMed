@@ -69,8 +69,7 @@ main {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
-.search-panel h2,
-.results-panel h2 {
+.search-panel h2 {
   margin: 0 0 1rem 0;
   color: #4b0082;
   font-size: 1.25rem;
@@ -199,6 +198,56 @@ button.search-btn {
   overflow-y: auto;
   flex: 1;
   box-sizing: border-box;
+}
+
+.results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.results-header h2 {
+  margin: 0;
+  color: #4b0082;
+  font-size: 1.25rem;
+  border-bottom: 2px solid #e6e0ff;
+  padding-bottom: 0.5rem;
+  flex: 1;
+}
+
+.results-controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: 1rem;
+}
+
+.save-json-btn,
+.save-excel-btn {
+  padding: 0.5rem 1rem;
+  background-color: #8b00ff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.save-json-btn:hover,
+.save-excel-btn:hover {
+  background-color: #7a00e6;
+}
+
+.save-json-btn:disabled,
+.save-excel-btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.save-json-btn:disabled:hover,
+.save-excel-btn:disabled:hover {
+  background-color: #ccc;
 }
 
 /* 반응형 디자인 */
