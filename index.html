@@ -13,10 +13,27 @@
     <h1>Acuzenic - AI Pharmacovigilance Total Solution</h1>
   </header>
   <main>
-    <div id="keyword-container"></div>
-    <button class="search-btn" onclick="search()">Search</button>
-    <div class="summary" id="summary"></div>
-    <div class="results" id="results">Results will appear here...</div>
+    <div class="container">
+      <div class="search-panel">
+        <h2>검색 조건 설정</h2>
+        <div id="keyword-container"></div>
+        <div class="summary-container">
+          <div class="summary-header">
+            <h3>검색 조건 미리보기</h3>
+            <div class="summary-controls">
+              <button class="copy-summary-btn" title="검색 조건 복사">📋</button>
+              <button class="paste-summary-btn" title="검색 조건 붙여넣기">📄</button>
+            </div>
+          </div>
+          <div class="summary" id="summary"></div>
+        </div>
+        <button class="search-btn" onclick="search()">Search</button>
+      </div>
+      <div class="results-panel">
+        <h2>검색 결과</h2>
+        <div class="results" id="results">Results will appear here...</div>
+      </div>
+    </div>
   </main>
 
   <!-- config 먼저, script 나중 -->

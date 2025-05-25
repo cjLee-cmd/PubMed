@@ -3,6 +3,133 @@
 const keywordContainer = document.getElementById('keyword-container');
 const summary = document.getElementById('summary');
 
+// 복사/붙여넣기 유틸리티 함수들
+async function copyToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast('키워드가 클립보드에 복사되었습니다.');
+  } catch (err) {
+    console.error('복사 실패:', err);
+    // fallback method
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    document.body.appendChild(textArea);
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      showToast('키워드가 클립보드에 복사되었습니다.');
+    } catch (fallbackErr) {
+      showToast('복사에 실패했습니다.');
+    }
+    document.body.removeChild(textArea);
+  }
+}
+
+async function pasteFromClipboard(inputElement) {
+  try {
+    const text = await navigator.clipboard.readText();
+    inputElement.value = text;
+    inputElement.dispatchEvent(new Event('input'));
+    showToast('키워드가 붙여넣기되었습니다.');
+  } catch (err) {
+    console.error('붙여넣기 실패:', err);
+    showToast('붙여넣기에 실패했습니다. Ctrl+V를 사용해보세요.');
+  }
+}
+
+// 토스트 메시지 표시
+function showToast(message) {
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = message;
+  toast.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #333;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s;
+  `;
+  
+  document.body.appendChild(toast);
+  
+  // 애니메이션
+  setTimeout(() => toast.style.opacity = '1', 10);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => document.body.removeChild(toast), 300);
+  }, 2000);
+}
+
+// 컨텍스트 메뉴 표시
+function showContextMenu(event, inputElement) {
+  // 기존 컨텍스트 메뉴 제거
+  const existingMenu = document.querySelector('.context-menu');
+  if (existingMenu) {
+    existingMenu.remove();
+  }
+
+  const menu = document.createElement('div');
+  menu.className = 'context-menu';
+  menu.style.cssText = `
+    position: fixed;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-shadow: 2px 2px 10px rgba(0,0,0,0.1);
+    z-index: 1000;
+    min-width: 120px;
+  `;
+
+  const copyItem = document.createElement('div');
+  copyItem.textContent = '📋 복사';
+  copyItem.style.cssText = `
+    padding: 10px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+  `;
+  copyItem.onmouseover = () => copyItem.style.background = '#f0f0f0';
+  copyItem.onmouseout = () => copyItem.style.background = 'white';
+  copyItem.onclick = () => {
+    copyToClipboard(inputElement.value);
+    menu.remove();
+  };
+
+  const pasteItem = document.createElement('div');
+  pasteItem.textContent = '📄 붙여넣기';
+  pasteItem.style.cssText = `
+    padding: 10px 15px;
+    cursor: pointer;
+  `;
+  pasteItem.onmouseover = () => pasteItem.style.background = '#f0f0f0';
+  pasteItem.onmouseout = () => pasteItem.style.background = 'white';
+  pasteItem.onclick = () => {
+    pasteFromClipboard(inputElement);
+    menu.remove();
+  };
+
+  menu.appendChild(copyItem);
+  menu.appendChild(pasteItem);
+  
+  // 메뉴 위치 설정
+  menu.style.left = event.pageX + 'px';
+  menu.style.top = event.pageY + 'px';
+  
+  document.body.appendChild(menu);
+
+  // 다른 곳 클릭시 메뉴 닫기
+  setTimeout(() => {
+    document.addEventListener('click', function closeMenu() {
+      menu.remove();
+      document.removeEventListener('click', closeMenu);
+    });
+  }, 10);
+}
+
 function updateSummary() {
   const groups = document.querySelectorAll('.keyword-group');
   const parts = [];
@@ -46,6 +173,17 @@ function createKeywordGroup() {
   const deleteBtn = document.createElement('button');
   deleteBtn.textContent = 'Delete';
 
+  // 복사/붙여넣기 버튼 추가
+  const copyBtn = document.createElement('button');
+  copyBtn.textContent = '📋';
+  copyBtn.title = 'Copy keyword';
+  copyBtn.onclick = () => copyToClipboard(input.value);
+
+  const pasteBtn = document.createElement('button');
+  pasteBtn.textContent = '📄';
+  pasteBtn.title = 'Paste keyword';
+  pasteBtn.onclick = () => pasteFromClipboard(input);
+
   [andBtn, orBtn].forEach(btn => {
     btn.onclick = () => {
       andBtn.classList.remove('active');
@@ -71,6 +209,27 @@ function createKeywordGroup() {
     setTimeout(updateSummary, 100);
   };
 
+  // 키보드 단축키 추가 (Ctrl+C, Ctrl+V)
+  input.onkeydown = (e) => {
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === 'c') {
+        copyToClipboard(input.value);
+      } else if (e.key === 'v') {
+        // 기본 브라우저 붙여넣기 동작을 허용하고 업데이트만 트리거
+        setTimeout(() => {
+          maybeAddNewGroup();
+          updateSummary();
+        }, 10);
+      }
+    }
+  };
+
+  // 컨텍스트 메뉴 비활성화 및 커스텀 메뉴 추가
+  input.oncontextmenu = (e) => {
+    e.preventDefault();
+    showContextMenu(e, input);
+  };
+
   function maybeAddNewGroup() {
     if (input.value && (andBtn.classList.contains('active') || orBtn.classList.contains('active'))) {
       const lastGroup = keywordContainer.lastElementChild;
@@ -81,6 +240,8 @@ function createKeywordGroup() {
   }
 
   group.appendChild(input);
+  group.appendChild(copyBtn);
+  group.appendChild(pasteBtn);
   group.appendChild(andBtn);
   group.appendChild(orBtn);
   group.appendChild(deleteBtn);
@@ -146,3 +307,238 @@ async function search() {
 }
 
 createKeywordGroup();
+
+// Summary 박스 복사/붙여넣기 기능 초기화
+function initializeSummaryFeatures() {
+  const summaryElement = document.getElementById('summary');
+  const copySummaryBtn = document.querySelector('.copy-summary-btn');
+  const pasteSummaryBtn = document.querySelector('.paste-summary-btn');
+
+  // 복사 버튼 이벤트
+  copySummaryBtn.onclick = () => {
+    const summaryText = summaryElement.textContent || summaryElement.innerText;
+    copyToClipboard(summaryText);
+  };
+
+  // 붙여넣기 버튼 이벤트
+  pasteSummaryBtn.onclick = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text.trim()) {
+        // 붙여넣은 텍스트를 파싱하여 키워드 그룹들을 생성
+        parseSummaryAndCreateGroups(text);
+        showToast('검색 조건이 붙여넣기되었습니다.');
+      }
+    } catch (err) {
+      console.error('붙여넣기 실패:', err);
+      showToast('붙여넣기에 실패했습니다. 수동으로 입력해주세요.');
+    }
+  };
+
+  // 컨텍스트 메뉴 추가
+  summaryElement.oncontextmenu = (e) => {
+    e.preventDefault();
+    showSummaryContextMenu(e, summaryElement);
+  };
+
+  // 키보드 단축키 (summary 박스에 포커스가 있을 때)
+  summaryElement.tabIndex = 0; // 포커스 가능하게 만들기
+  summaryElement.onkeydown = (e) => {
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === 'c') {
+        const summaryText = summaryElement.textContent || summaryElement.innerText;
+        copyToClipboard(summaryText);
+      } else if (e.key === 'v') {
+        pasteSummaryBtn.click();
+      }
+    }
+  };
+}
+
+// Summary용 컨텍스트 메뉴
+function showSummaryContextMenu(event, summaryElement) {
+  // 기존 컨텍스트 메뉴 제거
+  const existingMenu = document.querySelector('.context-menu');
+  if (existingMenu) {
+    existingMenu.remove();
+  }
+
+  const menu = document.createElement('div');
+  menu.className = 'context-menu';
+  menu.style.cssText = `
+    position: fixed;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-shadow: 2px 2px 10px rgba(0,0,0,0.1);
+    z-index: 1000;
+    min-width: 140px;
+  `;
+
+  const copyItem = document.createElement('div');
+  copyItem.textContent = '📋 검색 조건 복사';
+  copyItem.style.cssText = `
+    padding: 10px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+  `;
+  copyItem.onmouseover = () => copyItem.style.background = '#f0f0f0';
+  copyItem.onmouseout = () => copyItem.style.background = 'white';
+  copyItem.onclick = () => {
+    const summaryText = summaryElement.textContent || summaryElement.innerText;
+    copyToClipboard(summaryText);
+    menu.remove();
+  };
+
+  const pasteItem = document.createElement('div');
+  pasteItem.textContent = '📄 검색 조건 붙여넣기';
+  pasteItem.style.cssText = `
+    padding: 10px 15px;
+    cursor: pointer;
+  `;
+  pasteItem.onmouseover = () => pasteItem.style.background = '#f0f0f0';
+  pasteItem.onmouseout = () => pasteItem.style.background = 'white';
+  pasteItem.onclick = () => {
+    document.querySelector('.paste-summary-btn').click();
+    menu.remove();
+  };
+
+  menu.appendChild(copyItem);
+  menu.appendChild(pasteItem);
+  
+  // 메뉴 위치 설정
+  menu.style.left = event.pageX + 'px';
+  menu.style.top = event.pageY + 'px';
+  
+  document.body.appendChild(menu);
+
+  // 다른 곳 클릭시 메뉴 닫기
+  setTimeout(() => {
+    document.addEventListener('click', function closeMenu() {
+      menu.remove();
+      document.removeEventListener('click', closeMenu);
+    });
+  }, 10);
+}
+
+// 붙여넣은 텍스트를 파싱하여 키워드 그룹 생성
+function parseSummaryAndCreateGroups(text) {
+  // 기존 키워드 그룹들 제거
+  const keywordContainer = document.getElementById('keyword-container');
+  keywordContainer.innerHTML = '';
+
+  // 텍스트를 파싱하여 키워드와 연산자 추출
+  const cleanText = text.replace(/\n/g, ' ').trim();
+  const parts = cleanText.split(/\s+/);
+  
+  let currentKeyword = '';
+  let currentOperator = '';
+  
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    
+    if (part.startsWith('"') && part.endsWith('"')) {
+      // 따옴표로 둘러싸인 키워드
+      currentKeyword = part.slice(1, -1);
+      createKeywordGroupWithValue(currentKeyword, currentOperator);
+      currentOperator = '';
+    } else if (part.toUpperCase() === 'AND' || part.toUpperCase() === 'OR') {
+      // 연산자
+      currentOperator = part.toUpperCase();
+    }
+  }
+  
+  // 마지막에 빈 그룹 하나 추가
+  createKeywordGroup();
+  updateSummary();
+}
+
+// 값과 연산자가 설정된 키워드 그룹 생성
+function createKeywordGroupWithValue(keyword, operator) {
+  const group = document.createElement('div');
+  group.className = 'keyword-group';
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.placeholder = 'Enter keyword...';
+  input.value = keyword;
+
+  const andBtn = document.createElement('button');
+  andBtn.textContent = 'AND';
+  const orBtn = document.createElement('button');
+  orBtn.textContent = 'OR';
+  const deleteBtn = document.createElement('button');
+  deleteBtn.textContent = 'Delete';
+
+  // 복사/붙여넣기 버튼 추가
+  const copyBtn = document.createElement('button');
+  copyBtn.textContent = '📋';
+  copyBtn.title = 'Copy keyword';
+  copyBtn.onclick = () => copyToClipboard(input.value);
+
+  const pasteBtn = document.createElement('button');
+  pasteBtn.textContent = '📄';
+  pasteBtn.title = 'Paste keyword';
+  pasteBtn.onclick = () => pasteFromClipboard(input);
+
+  // 연산자 설정
+  if (operator === 'AND') {
+    andBtn.classList.add('active');
+  } else if (operator === 'OR') {
+    orBtn.classList.add('active');
+  }
+
+  [andBtn, orBtn].forEach(btn => {
+    btn.onclick = () => {
+      andBtn.classList.remove('active');
+      orBtn.classList.remove('active');
+      btn.classList.add('active');
+      updateSummary();
+    };
+  });
+
+  deleteBtn.onclick = () => {
+    group.remove();
+    updateSummary();
+  };
+
+  input.oninput = () => {
+    updateSummary();
+  };
+
+  input.onpaste = () => {
+    setTimeout(updateSummary, 100);
+  };
+
+  // 키보드 단축키 추가 (Ctrl+C, Ctrl+V)
+  input.onkeydown = (e) => {
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === 'c') {
+        copyToClipboard(input.value);
+      } else if (e.key === 'v') {
+        setTimeout(() => {
+          updateSummary();
+        }, 10);
+      }
+    }
+  };
+
+  // 컨텍스트 메뉴 비활성화 및 커스텀 메뉴 추가
+  input.oncontextmenu = (e) => {
+    e.preventDefault();
+    showContextMenu(e, input);
+  };
+
+  group.appendChild(input);
+  group.appendChild(copyBtn);
+  group.appendChild(pasteBtn);
+  group.appendChild(andBtn);
+  group.appendChild(orBtn);
+  group.appendChild(deleteBtn);
+  
+  const keywordContainer = document.getElementById('keyword-container');
+  keywordContainer.appendChild(group);
+}
+
+// Summary 기능 초기화
+initializeSummaryFeatures();
